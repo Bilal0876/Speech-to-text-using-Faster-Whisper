@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Transcription</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .status {
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-weight: 500;
+            font-size: 1.1em;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .status.connecting {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ff6b35;
+            border: 2px solid rgba(255, 193, 7, 0.4);
+        }
+
+        .status.connected {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 2px solid rgba(40, 167, 69, 0.4);
+        }
+
+        .status.disconnected {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 2px solid rgba(220, 53, 69, 0.4);
+        }
+
+        .transcription-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .transcription-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .transcription-header h2 {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: 300;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+        }
+
+        .btn-clear {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-clear:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-export {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-audio {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+        }
+
+        .btn-audio:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .transcriptions {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 500px;
+            padding: 10px 0;
+        }
+
+        .transcription-item {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            animation: slideIn 0.3s ease;
+            transition: all 0.3s ease;
+        }
+
+        .transcription-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .transcription-item:last-child {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.05);
+        }
+
+        .transcription-meta {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .transcription-text {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            font-size: 1.2em;
+            margin-top: 50px;
+        }
+
+        .empty-state .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .listening-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #28a745;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .transcription-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Real-time Transcription</h1>
+            <div class="status connecting" id="status">Connecting...</div>
+        </div>
+
+        <div class="transcription-container">
+            <div class="transcription-header">
+                <h2>Live Transcriptions</h2>
+                <div class="controls">
+                    <button class="btn btn-clear" onclick="clearTranscriptions()">Clear All</button>
+                    <button class="btn btn-audio" onclick="downloadAudio()">Download Audio</button>
+                </div>
+            </div>
+
+            <div class="transcriptions" id="transcriptions">
+                <div class="empty-state">
+                    <div class="icon">🎤</div>
+                    <div>Speak to see transcriptions appear here...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="wordCount">0</div>
+                <div class="stat-label">Total Words</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="segmentCount">0</div>
+                <div class="stat-label">Segments</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="duration">0:00</div>
+                <div class="stat-label">Duration</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        let ws;
+        let transcriptions = [];
+        let totalWords = 0;
+        let segmentCount = 0;
+        let startTime = null;
+
+        function connect() {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = 'Connecting...';
+            statusEl.className = 'status connecting';
+
+            ws = new WebSocket('ws://localhost:8765');
+
+            ws.onopen = function() {
+                statusEl.innerHTML = 'Connected <span class="listening-indicator"></span>';
+                statusEl.className = 'status connected';
+                startTime = new Date();
+                updateDuration();
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'transcription') {
+                    addTranscription(data);
+                } else if (data.type === 'files_ready') {
+                    if (data.audio_data && data.audio_file) {
+                        const byteCharacters = atob(data.audio_data);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: "audio/wav" });
+
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = data.audio_file;
+                        a.click();
+                        URL.revokeObjectURL(url);
+
+                        alert(`Audio downloaded: ${data.audio_file}`);
+                    }
+                }
+            };
+
+            ws.onclose = function() {
+                statusEl.textContent = 'Disconnected';
+                statusEl.className = 'status disconnected';
+            };
+        }
+
+        function addTranscription(data) {
+            const transcriptionsEl = document.getElementById('transcriptions');
+            if (transcriptionsEl.querySelector('.empty-state')) {
+                transcriptionsEl.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = 'transcription-item';
+
+            const meta = document.createElement('div');
+            meta.className = 'transcription-meta';
+            meta.innerHTML = `<span>${data.timestamp}</span><span>Segment ${segmentCount + 1}</span>`;
+
+            const text = document.createElement('div');
+            text.className = 'transcription-text';
+            text.textContent = data.text;
+
+            item.appendChild(meta);
+            item.appendChild(text);
+            transcriptionsEl.appendChild(item);
+
+            transcriptions.push(data);
+            totalWords += data.text.split(/\s+/).length;
+            segmentCount++;
+
+            document.getElementById('wordCount').textContent = totalWords;
+            document.getElementById('segmentCount').textContent = segmentCount;
+        }
+
+        function clearTranscriptions() {
+            document.getElementById('transcriptions').innerHTML = `
+                <div class="empty-state">
+                    <div class="icon"></div>
+                    <div>Waiting for audio input...</div>
+                    <div style="font-size: 0.9em; margin-top: 10px;">Start speaking to see transcriptions appear here</div>
+                </div>
+            `;
+            transcriptions = [];
+            totalWords = 0;
+            segmentCount = 0;
+            document.getElementById('wordCount').textContent = 0;
+            document.getElementById('segmentCount').textContent = 0;
+        }
+
+        function downloadAudio() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "download_files" }));
+            }
+        }
+
+        function updateDuration() {
+            if (!startTime) return;
+            const now = new Date();
+            const diff = Math.floor((now - startTime) / 1000);
+            const minutes = Math.floor(diff / 60);
+            const seconds = diff % 60;
+            document.getElementById('duration').textContent =
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            setTimeout(updateDuration, 1000);
+        }
+
+        connect();
+    </script>
+</body>
+</html>
