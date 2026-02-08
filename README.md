@@ -16,8 +16,6 @@ Capture live microphone audio, stream transcriptions to webpage in real time, an
 
 ---
 
----
-
 ## ⚙ Requirements
 
 ### System
@@ -29,9 +27,10 @@ Capture live microphone audio, stream transcriptions to webpage in real time, an
 
 To use Faster-Whisper efficiently, install **PyTorch with CUDA support**. For example, if you have **CUDA 12.1**, install:
 
-```bash
-pip install torch==2.5.1+cu121 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+  ```bash
+  pip install torch==2.5.1+cu121 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
+---
 ##  How It Works
 
 The system pipeline:
