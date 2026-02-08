@@ -16,7 +16,7 @@ Capture live microphone audio, stream transcriptions to webpage in real time, an
 
 ---
 
-## ⚙ Requirements
+## Requirements
 
 ### System
 
